@@ -1,5 +1,6 @@
 import os
 
+
 MODEL_PATH = '/share1/haoran/czq/SMPL/body-model-visualizer/data/body_models'
 MANO_PATH = {'right': os.path.join(MODEL_PATH, "mano/MANO_RIGHT.pkl"),
              'left': os.path.join(MODEL_PATH, "mano/MANO_LEFT.pkl")}

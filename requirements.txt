@@ -1,0 +1,7 @@
+manopth==0.0.1
+nosmpl==0.1.4
+numpy==1.23.0
+open3d==0.17.0
+scipy==1.13.0
+smplx==0.1.28
+torch==1.13.1+cu116
