@@ -25,8 +25,9 @@ scene_id = 1
 
 def synthesis_from_element(dex_key = "Refrigerator_a728186f2bb912572d8564c06b061019_0.0013412556701002402index000", # refer to /share/haoran/HRI/DexGraspNet/scenes.txt
         gmd_batch = "try_03200001", gmd_scene = "sample05_rep00", # path to gmd rendering
+        dex_save = True, # save obj and hand meshes from dex grasp net 
         ):
-    
+
     # load GraspNet information
     dex_grasp_net_path = os.path.join("/share/haoran/HRI/handover-sim/handover/data","grasp_net/meta", "{}.npz".format(dex_key))
     dex_grasp_net_meta = dict(np.load(dex_grasp_net_path, allow_pickle = True))
@@ -45,8 +46,13 @@ def synthesis_from_element(dex_key = "Refrigerator_a728186f2bb912572d8564c06b061
     hand_model = MANO(MANO_PATH[grasp_side], **extra_params)
     hand_output = hand_model(global_orient=torch.zeros(1, 3), betas=hand_beta_tensor, hand_pose = hand_theta_tensor, axis = 1)
     hand_transformed_joints = hand_output.joints[0].detach().cpu().numpy().squeeze()
+    hand_transformed_vertices = hand_output.vertices[0].detach().cpu().numpy().squeeze()
+    hand_faces = hand_model.faces.astype(np.int32)
+    hand_mesh = o3d.geometry.TriangleMesh()
+    hand_mesh.vertices = o3d.utility.Vector3dVector(hand_transformed_vertices)
+    hand_mesh.triangles = o3d.utility.Vector3iVector(hand_faces)
 
-    # construct body model (optically smpl-h yet fails) 
+    # construct body model (optically smpl-h yet fails)
     gender = 'neutral'
     model_type = 'smplx'
     if model_type == 'smpl': model = SMPL(SMPL_PATH[gender], **extra_params, ext = SMPL_PATH[gender].split('.')[-1])
@@ -85,7 +91,9 @@ def synthesis_from_element(dex_key = "Refrigerator_a728186f2bb912572d8564c06b061
     # pose information for Isaac Gym 
     with open(os.path.join(SAVE_PATH, "log.txt"), "a") as f:
         f.write("{}&{}&{}&{}\n".format(scene_id, gmd_batch, gmd_scene, dex_key))
-    save_path = os.path.join(SAVE_PATH, "scenes", "scene_{:08d}.npy".format(scene_id))
+    save_path = os.path.join(SAVE_PATH, "scenes", "scene_{:08d}".format(scene_id))
+    if not os.path.isdir(save_path):
+        os.mkdir(save_path)
     pose_dict = {}
     pose_dict['body_pose'] = np.zeros((motion.shape[0], 7))
     pose_dict['body_params'] = np.zeros((motion.shape[0], 21, 3)) # rotation vector formula
@@ -141,9 +149,18 @@ def synthesis_from_element(dex_key = "Refrigerator_a728186f2bb912572d8564c06b061
         pose_dict['obj_pose'][frame_id, 3:] = Rt.from_matrix(obj_ground_displace[:3, :3]).as_quat()
       
     # save the body and obj parameters
-    np.save(save_path, pose_dict)
+    if dex_save:
+        target_obj_mesh = o3d.io.read_triangle_mesh(os.path.join("/share/haoran/HRI/handover-sim/handover/data", "assets", dex_key.split("index")[0], "model_normalized_convex.obj"))
+        o3d.io.write_triangle_mesh(os.path.join(save_path, "object.obj"),target_obj_mesh)
+        hand_transformed_vertices = hand_output.vertices[0].detach().cpu().numpy().squeeze()
+        hand_faces = hand_model.faces.astype(np.int32)
+        hand_mesh = o3d.geometry.TriangleMesh()
+        hand_mesh.vertices = o3d.utility.Vector3dVector(hand_transformed_vertices)
+        hand_mesh.triangles = o3d.utility.Vector3iVector(hand_faces)
+        o3d.io.write_triangle_mesh(os.path.join(save_path, "hand.obj"),hand_mesh)
+    np.save(os.path.join(save_path, "pose"), pose_dict)
 
 if __name__ == '__main__':
-    for i in range(1):
-        scene_id = i+31
-        synthesis_from_element()
+    for i in range(10):
+        scene_id = i
+        synthesis_from_element(gmd_scene = f"sample0{scene_id}_rep00")

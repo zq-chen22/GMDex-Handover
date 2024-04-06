@@ -1,6 +1,5 @@
 import os
 
-
 MODEL_PATH = '/share1/haoran/czq/SMPL/body-model-visualizer/data/body_models'
 MANO_PATH = {'right': os.path.join(MODEL_PATH, "mano/MANO_RIGHT.pkl"),
              'left': os.path.join(MODEL_PATH, "mano/MANO_LEFT.pkl")}
@@ -16,4 +15,5 @@ SMPLX_PATH = {'female': os.path.join(MODEL_PATH, "smplx/SMPLX_FEMALE.pkl"),
 HAND_KEY_JOINT = {'right': [0, 15, 6, 9], 'left': [0, 15, 6, 9]}
 BODY_KEY_JOINT = {'right': [21, 54, 45, 48], 'left': [20, 39, 30, 33]}
 JOINT_DICT = {'right_shoulder': 17, 'right_elbow': 19, 'right_wrist': 21}
-SAVE_PATH = "/share1/haoran/mobile/Mobile_Handover/data/gmd"
+SAVE_PATH = os.path.join(os.path.dirname(__file__), "assets/data")
+DEX_GRASP_SAVE = True

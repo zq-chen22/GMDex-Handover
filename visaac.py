@@ -10,14 +10,13 @@ import utils
 from config import *
 
 # this is to synthesis & visualize a new scene from dexgraspnet keyword and gmd scene keyword.
-def vis_from_isaac(save_path: str = os.path.join(SAVE_PATH, "scenes", "scene_{:08d}.npy".format(31)), # path to gmd rendering
+def vis_from_isaac(save_path: str = os.path.join(SAVE_PATH, "scenes", "scene_{:08d}".format(2)), # path to gmd rendering
         meshes = []
-        ):
+):
 
-    meshes = meshes
-
+    
     # load pose dictionary
-    pose_dict = np.load(save_path, allow_pickle = True).item()
+    pose_dict = np.load(os.path.join(save_path, "pose.npy"), allow_pickle = True).item()
     body_pose = pose_dict['body_pose']
     body_params = pose_dict['body_params'] # rotation vector formula
     hand_pose = pose_dict['hand_pose']
@@ -28,26 +27,13 @@ def vis_from_isaac(save_path: str = os.path.join(SAVE_PATH, "scenes", "scene_{:0
     handover_length = scene_meta['handover_length']
 
     # load GraspNet information
-    dex_grasp_net_path = os.path.join("/share/haoran/HRI/handover-sim/handover/data","grasp_net/meta", "{}.npz".format(scene_meta['dex_key']))
-    dex_grasp_net_meta = dict(np.load(dex_grasp_net_path, allow_pickle = True))
-    target_obj_mesh = o3d.io.read_triangle_mesh(os.path.join("/share/haoran/HRI/handover-sim/handover/data", "assets", scene_meta['dex_key'].split("index")[0], "model_normalized_convex.obj"))
-    grasp_side = scene_meta['hand_side']
-    hand_beta_tensor = torch.tensor(dex_grasp_net_meta['hand_beta'], dtype=torch.float32).unsqueeze(0) # Non-zero meta may hurt the alignment
-    hand_theta_tensor = torch.tensor(dex_grasp_net_meta['hand_theta'], dtype=torch.float32).unsqueeze(0)
-
-    # construct hand mesh
     extra_params = {}
     extra_params['use_pca'] = False
     extra_params['use_face_contour'] = True
     extra_params['flat_hand_mean'] = True
-    hand_model = MANO(MANO_PATH[grasp_side], **extra_params)
-    hand_output = hand_model(global_orient=torch.zeros(1, 3), betas=hand_beta_tensor, hand_pose = hand_theta_tensor, axis = 1)
-    hand_transformed_joints = hand_output.joints[0].detach().cpu().numpy().squeeze()
-    hand_transformed_vertices = hand_output.vertices[0].detach().cpu().numpy().squeeze()
-    hand_faces = hand_model.faces.astype(np.int32)
-    hand_mesh = o3d.geometry.TriangleMesh()
-    hand_mesh.vertices = o3d.utility.Vector3dVector(hand_transformed_vertices)
-    hand_mesh.triangles = o3d.utility.Vector3iVector(hand_faces)
+    target_obj_mesh = o3d.io.read_triangle_mesh(os.path.join(save_path, "object.obj"))
+    grasp_side = scene_meta['hand_side']
+    hand_mesh = o3d.io.read_triangle_mesh(os.path.join(save_path, "hand.obj"))
     hand_mesh_color = (1, 0, 0)
     hand_mesh.paint_uniform_color(hand_mesh_color) 
 
@@ -74,7 +60,7 @@ def vis_from_isaac(save_path: str = os.path.join(SAVE_PATH, "scenes", "scene_{:0
         # generate body mesh
         input_args = {
                 'body_pose': torch.tensor(body_params[frame_id]).reshape(1, -1).float(),
-                f'{grasp_side}_hand_pose': hand_theta_tensor,
+                f'{grasp_side}_hand_pose': torch.tensor(hand_params[frame_id]).reshape(1, -1).float(),
             }
         output = model(global_orient=torch.zeros(1, 3), betas=torch.zeros(1, 10), **input_args)
         body_joints = output.joints[0].detach().cpu().numpy().squeeze()
